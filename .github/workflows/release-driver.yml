@@ -1,0 +1,185 @@
+name: Reusable Driver Release And Registry Update
+
+on:
+  workflow_call:
+    inputs:
+      driver_name:
+        required: true
+        type: string
+      binary_name:
+        required: true
+        type: string
+      go_build_path:
+        required: true
+        type: string
+      release_tag:
+        required: true
+        type: string
+      registry_owner:
+        required: false
+        type: string
+        default: Charles546
+      registry_repo:
+        required: false
+        type: string
+        default: honeydipper-registry
+      manifest_file:
+        required: true
+        type: string
+      artifact_os:
+        required: false
+        type: string
+        default: linux
+      artifact_arch:
+        required: false
+        type: string
+        default: amd64
+      channel:
+        required: false
+        type: string
+        default: stable
+      mirror_url:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      registry_repo_token:
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      sha256: ${{ steps.hash.outputs.sha256 }}
+      asset_name: ${{ steps.asset.outputs.asset_name }}
+      asset_url: ${{ steps.asset.outputs.asset_url }}
+    steps:
+      - name: Checkout driver repo
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build release binary
+        env:
+          GOOS: ${{ inputs.artifact_os }}
+          GOARCH: ${{ inputs.artifact_arch }}
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist
+          go build -o "dist/${{ inputs.binary_name }}" "${{ inputs.go_build_path }}"
+
+      - name: Prepare release asset metadata
+        id: asset
+        run: |
+          asset_name="${{ inputs.binary_name }}-${{ inputs.artifact_os }}-${{ inputs.artifact_arch }}"
+          cp "dist/${{ inputs.binary_name }}" "dist/${asset_name}"
+          echo "asset_name=${asset_name}" >> "$GITHUB_OUTPUT"
+          echo "asset_url=https://github.com/${{ github.repository }}/releases/download/${{ inputs.release_tag }}/${asset_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute sha256
+        id: hash
+        run: |
+          sha=$(sha256sum "dist/${{ steps.asset.outputs.asset_name }}" | awk '{print $1}')
+          echo "sha256=${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ inputs.release_tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ inputs.release_tag }}" "dist/${{ steps.asset.outputs.asset_name }}" --clobber
+          else
+            gh release create "${{ inputs.release_tag }}" "dist/${{ steps.asset.outputs.asset_name }}" --title "${{ inputs.driver_name }} ${{ inputs.release_tag }}" --notes "Automated release for ${{ inputs.driver_name }} ${{ inputs.release_tag }}"
+          fi
+
+  update-registry:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Checkout registry repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.registry_owner }}/${{ inputs.registry_repo }}
+          token: ${{ secrets.registry_repo_token }}
+          path: registry
+
+      - name: Update manifest
+        working-directory: registry
+        env:
+          DRIVER_NAME: ${{ inputs.driver_name }}
+          MANIFEST_FILE: ${{ inputs.manifest_file }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          CHANNEL: ${{ inputs.channel }}
+          ARTIFACT_OS: ${{ inputs.artifact_os }}
+          ARTIFACT_ARCH: ${{ inputs.artifact_arch }}
+          BINARY_NAME: ${{ inputs.binary_name }}
+          ASSET_URL: ${{ needs.release.outputs.asset_url }}
+          SHA256: ${{ needs.release.outputs.sha256 }}
+          MIRROR_URL: ${{ inputs.mirror_url }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path(os.environ["MANIFEST_FILE"])
+          if not manifest_path.exists():
+              raise SystemExit(f"manifest file not found: {manifest_path}")
+
+          with manifest_path.open("r", encoding="utf-8") as f:
+              manifest = json.load(f)
+
+          driver_name = os.environ["DRIVER_NAME"]
+          release_tag = os.environ["RELEASE_TAG"]
+          channel = os.environ["CHANNEL"]
+
+          artifact = {
+              "os": os.environ["ARTIFACT_OS"],
+              "arch": os.environ["ARTIFACT_ARCH"],
+              "url": os.environ["ASSET_URL"],
+              "sha256": os.environ["SHA256"],
+              "fileName": os.environ["BINARY_NAME"],
+          }
+
+          mirror = os.environ.get("MIRROR_URL", "").strip()
+          if mirror:
+              artifact["mirrors"] = [mirror]
+
+          manifest["driver"] = driver_name
+          manifest.setdefault("versions", {})
+          manifest["versions"][release_tag] = {"artifacts": [artifact]}
+          manifest.setdefault("channels", {})
+          manifest["channels"][channel] = release_tag
+          manifest["latest"] = release_tag
+
+          with manifest_path.open("w", encoding="utf-8") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+          PY
+
+      - name: Validate updated registry
+        working-directory: registry
+        run: python3 tools/validate_registry.py --repo . --check-urls
+
+      - name: Create registry update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.registry_repo_token }}
+          path: registry
+          branch: bot/${{ inputs.driver_name }}-${{ inputs.release_tag }}
+          commit-message: "chore(registry): update ${{ inputs.driver_name }} to ${{ inputs.release_tag }}"
+          title: "chore(registry): update ${{ inputs.driver_name }} to ${{ inputs.release_tag }}"
+          body: |
+            Automated registry update from driver release workflow.
+
+            - Driver: `${{ inputs.driver_name }}`
+            - Version: `${{ inputs.release_tag }}`
+            - Channel: `${{ inputs.channel }}`
+            - Artifact URL: `${{ needs.release.outputs.asset_url }}`
+            - SHA256: `${{ needs.release.outputs.sha256 }}`

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://charles546.github.io/honeydipper-registry/schema/index.schema.json",
+  "title": "Honeydipper Registry Index",
+  "type": "object",
+  "required": ["schemaVersion", "drivers"],
+  "properties": {
+    "schemaVersion": {"type": "integer", "minimum": 1},
+    "drivers": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": true
+}

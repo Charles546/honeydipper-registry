@@ -8,7 +8,9 @@ It is designed to be served from GitHub Pages.
 
 - `index.json`: optional catalog of available drivers.
 - `<driver-name>.json`: per-driver registry manifest consumed by Honeydipper.
-- `artifacts/`: downloadable driver binaries.
+- `artifacts/`: optional mirror binaries for resilience/fallback operations.
+- `.github/workflows/validate-registry.yml`: CI validation for manifests.
+- `.github/workflows/release-driver.yml`: reusable workflow for driver repos.
 
 ## Included Drivers
 
@@ -58,9 +60,17 @@ drivers:
 
 ## Release Update Workflow
 
-When releasing a new driver version:
+Preferred flow is metadata-first:
 
-1. Build and upload a new binary under `artifacts/<driver>/<version>/...`.
+1. Driver repositories publish GitHub Release assets.
+2. Registry manifests reference release asset URLs + `sha256`.
+3. Optional mirror URLs can point to `artifacts/` in this repo.
+
+See detailed process in [docs/release-process.md](./docs/release-process.md).
+
+Manual fallback when automation is unavailable:
+
+1. Build and upload a new binary in the driver repository release.
 2. Compute and update `sha256` in `<driver>.json`.
 3. Add `versions.<version>` entry.
 4. Move `channels.stable` and `latest` if needed.

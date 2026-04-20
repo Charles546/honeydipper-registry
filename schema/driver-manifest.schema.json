@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://charles546.github.io/honeydipper-registry/schema/driver-manifest.schema.json",
+  "title": "Honeydipper Driver Registry Manifest",
+  "type": "object",
+  "required": ["driver", "latest", "channels", "versions"],
+  "properties": {
+    "driver": {"type": "string", "minLength": 1},
+    "latest": {"type": "string", "minLength": 1},
+    "publicKey": {"type": "string"},
+    "channels": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["artifacts"],
+        "properties": {
+          "publicKey": {"type": "string"},
+          "artifacts": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["os", "arch", "url", "sha256", "fileName"],
+              "properties": {
+                "os": {"type": "string", "minLength": 1},
+                "arch": {"type": "string", "minLength": 1},
+                "url": {"type": "string", "format": "uri"},
+                "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                "fileName": {"type": "string", "minLength": 1},
+                "publicKey": {"type": "string"},
+                "signature": {"type": "string"},
+                "mirrors": {
+                  "type": "array",
+                  "items": {"type": "string", "format": "uri"}
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
