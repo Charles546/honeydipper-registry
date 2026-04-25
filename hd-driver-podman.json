@@ -1,8 +1,8 @@
 {
   "driver": "hd-driver-podman",
-  "latest": "v0.1.0",
+  "latest": "v0.2.0",
   "channels": {
-    "stable": "v0.1.0"
+    "stable": "v0.2.0"
   },
   "versions": {
     "v0.1.0": {
@@ -15,6 +15,20 @@
           "fileName": "hd-driver-podman",
           "mirrors": [
             "https://charles546.github.io/honeydipper-registry/artifacts/hd-driver-podman/v0.1.0/linux-amd64/hd-driver-podman"
+          ]
+        }
+      ]
+    },
+    "v0.2.0": {
+      "artifacts": [
+        {
+          "os": "linux",
+          "arch": "amd64",
+          "url": "https://github.com/Charles546/hd-driver-podman/releases/download/v0.2.0/hd-driver-podman-linux-amd64",
+          "sha256": "24634613187a80872163e89d19e7c5736bb803f8cf5d2d080347a1a01158b3ac",
+          "fileName": "hd-driver-podman",
+          "mirrors": [
+            "https://charles546.github.io/honeydipper-registry/artifacts/hd-driver-podman/v0.2.0/linux-amd64/hd-driver-podman"
           ]
         }
       ]
