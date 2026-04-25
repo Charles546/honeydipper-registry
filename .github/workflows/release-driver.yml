@@ -34,6 +34,14 @@ on:
         required: false
         type: string
         default: amd64
+      cgo_enabled:
+        required: false
+        type: string
+        default: "1"
+      build_prerequisites:
+        required: false
+        type: string
+        default: "sudo apt-get update && sudo apt-get install -y pkg-config libgpgme-dev libbtrfs-dev"
       channel:
         required: false
         type: string
@@ -65,11 +73,15 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install build prerequisites
+        if: ${{ inputs.build_prerequisites != '' }}
+        run: ${{ inputs.build_prerequisites }}
+
       - name: Build release binary
         env:
           GOOS: ${{ inputs.artifact_os }}
           GOARCH: ${{ inputs.artifact_arch }}
-          CGO_ENABLED: "0"
+          CGO_ENABLED: ${{ inputs.cgo_enabled }}
         run: |
           mkdir -p dist
           go build -o "dist/${{ inputs.binary_name }}" "${{ inputs.go_build_path }}"
