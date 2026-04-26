@@ -104,23 +104,24 @@ jobs:
 
       - name: Build release binary (container)
         if: ${{ inputs.build_image != '' }}
+        env:
+          BUILD_FLAGS: ${{ inputs.build_flags }}
+          CONTAINER_PREREQS: ${{ inputs.container_prerequisites }}
         run: |
           mkdir -p dist
-          PREREQS="${{ inputs.container_prerequisites }}"
-          BUILD_CMD="go build ${{ inputs.build_flags }} -o dist/${{ inputs.binary_name }} ${{ inputs.go_build_path }}"
-          if [[ -n "$PREREQS" ]]; then
-            FULL_CMD="$PREREQS && $BUILD_CMD"
-          else
-            FULL_CMD="$BUILD_CMD"
-          fi
           docker run --rm \
             -v "$PWD:/src" \
             -w /src \
             -e GOOS=${{ inputs.artifact_os }} \
             -e GOARCH=${{ inputs.artifact_arch }} \
             -e CGO_ENABLED=${{ inputs.cgo_enabled }} \
+            -e BUILD_FLAGS \
+            -e CONTAINER_PREREQS \
             ${{ inputs.build_image }} \
-            sh -c "$FULL_CMD"
+            sh -c '
+              if [ -n "$CONTAINER_PREREQS" ]; then eval "$CONTAINER_PREREQS"; fi
+              eval "go build $BUILD_FLAGS -o dist/${{ inputs.binary_name }} ${{ inputs.go_build_path }}"
+            '
 
       - name: Prepare release asset metadata
         id: asset
