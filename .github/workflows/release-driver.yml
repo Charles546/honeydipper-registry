@@ -37,11 +37,26 @@ on:
       cgo_enabled:
         required: false
         type: string
-        default: "1"
+        default: "0"
       build_prerequisites:
         required: false
         type: string
-        default: "sudo apt-get update && sudo apt-get install -y pkg-config libgpgme-dev libbtrfs-dev"
+        default: ""
+      build_image:
+        required: false
+        type: string
+        default: ""
+        description: "Docker image to run the build inside (e.g. golang:1.24-alpine). When set, build_prerequisites is ignored."
+      container_prerequisites:
+        required: false
+        type: string
+        default: ""
+        description: "Command to run inside build_image before building (e.g. apk add --no-cache gpgme-dev)."
+      build_flags:
+        required: false
+        type: string
+        default: ""
+        description: "Extra flags passed to go build (e.g. -ldflags=\"-extldflags '-static'\"  for a fully static binary)."
       channel:
         required: false
         type: string
@@ -74,17 +89,38 @@ jobs:
           go-version-file: go.mod
 
       - name: Install build prerequisites
-        if: ${{ inputs.build_prerequisites != '' }}
+        if: ${{ inputs.build_prerequisites != '' && inputs.build_image == '' }}
         run: ${{ inputs.build_prerequisites }}
 
-      - name: Build release binary
+      - name: Build release binary (host)
+        if: ${{ inputs.build_image == '' }}
         env:
           GOOS: ${{ inputs.artifact_os }}
           GOARCH: ${{ inputs.artifact_arch }}
           CGO_ENABLED: ${{ inputs.cgo_enabled }}
         run: |
           mkdir -p dist
-          go build -o "dist/${{ inputs.binary_name }}" "${{ inputs.go_build_path }}"
+          go build ${{ inputs.build_flags }} -o "dist/${{ inputs.binary_name }}" "${{ inputs.go_build_path }}"
+
+      - name: Build release binary (container)
+        if: ${{ inputs.build_image != '' }}
+        run: |
+          mkdir -p dist
+          PREREQS="${{ inputs.container_prerequisites }}"
+          BUILD_CMD="go build ${{ inputs.build_flags }} -o dist/${{ inputs.binary_name }} ${{ inputs.go_build_path }}"
+          if [[ -n "$PREREQS" ]]; then
+            FULL_CMD="$PREREQS && $BUILD_CMD"
+          else
+            FULL_CMD="$BUILD_CMD"
+          fi
+          docker run --rm \
+            -v "$PWD:/src" \
+            -w /src \
+            -e GOOS=${{ inputs.artifact_os }} \
+            -e GOARCH=${{ inputs.artifact_arch }} \
+            -e CGO_ENABLED=${{ inputs.cgo_enabled }} \
+            ${{ inputs.build_image }} \
+            sh -c "$FULL_CMD"
 
       - name: Prepare release asset metadata
         id: asset
