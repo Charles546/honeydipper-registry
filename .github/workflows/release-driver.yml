@@ -52,11 +52,11 @@ on:
         type: string
         default: ""
         description: "Command to run inside build_image before building (e.g. apk add --no-cache gpgme-dev)."
-      build_flags:
+      ldflags:
         required: false
         type: string
         default: ""
-        description: "Extra flags passed to go build (e.g. -ldflags=\"-extldflags '-static'\"  for a fully static binary)."
+        description: "Value passed to -ldflags (e.g. \"-extldflags '-static'\" for a fully static binary)."
       channel:
         required: false
         type: string
@@ -98,14 +98,15 @@ jobs:
           GOOS: ${{ inputs.artifact_os }}
           GOARCH: ${{ inputs.artifact_arch }}
           CGO_ENABLED: ${{ inputs.cgo_enabled }}
+          LDFLAGS: ${{ inputs.ldflags }}
         run: |
           mkdir -p dist
-          go build ${{ inputs.build_flags }} -o "dist/${{ inputs.binary_name }}" "${{ inputs.go_build_path }}"
+          go build ${LDFLAGS:+-ldflags="$LDFLAGS"} -o "dist/${{ inputs.binary_name }}" "${{ inputs.go_build_path }}"
 
       - name: Build release binary (container)
         if: ${{ inputs.build_image != '' }}
         env:
-          BUILD_FLAGS: ${{ inputs.build_flags }}
+          LDFLAGS: ${{ inputs.ldflags }}
           CONTAINER_PREREQS: ${{ inputs.container_prerequisites }}
         run: |
           mkdir -p dist
@@ -115,12 +116,12 @@ jobs:
             -e GOOS=${{ inputs.artifact_os }} \
             -e GOARCH=${{ inputs.artifact_arch }} \
             -e CGO_ENABLED=${{ inputs.cgo_enabled }} \
-            -e BUILD_FLAGS \
+            -e LDFLAGS \
             -e CONTAINER_PREREQS \
             ${{ inputs.build_image }} \
             sh -c '
               if [ -n "$CONTAINER_PREREQS" ]; then eval "$CONTAINER_PREREQS"; fi
-              eval "go build $BUILD_FLAGS -o dist/${{ inputs.binary_name }} ${{ inputs.go_build_path }}"
+              go build ${LDFLAGS:+-ldflags="$LDFLAGS"} -o dist/${{ inputs.binary_name }} ${{ inputs.go_build_path }}
             '
 
       - name: Prepare release asset metadata
