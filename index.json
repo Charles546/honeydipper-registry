@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "drivers": [
-    "hd-driver-podman",
-    "hd-driver-auth-github"
+    "podman",
+    "auth-github"
   ]
 }
