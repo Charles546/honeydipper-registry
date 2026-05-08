@@ -1,0 +1,95 @@
+---
+use_templates:
+  - Charles546/honeydipper-ci@refs/heads/main:resources/hdci.tmpl.yml
+
+settings:
+  worker: podman_default
+
+triggers:
+  - conditions:
+      relay_track: update-registry
+      sender:
+        - Charles546/hd-driver-podman
+        - Charles546/hd-driver-auth-github
+    stages:
+      - update-registry
+
+executors:
+  update-registry-parameters:
+    env:
+      MANIFEST_FILE: $parameters.manifest_file
+      UPDATE_LATEST: '{{ .parameters.update_latest }}'
+      UPDATE_CHANNEL: $parameters.update_channel
+      VERSION: $parameters.version
+      SHA256: $parameters.sha256
+      ASSET_URL: $parameters.asset_url
+      BINARY_NAME: $parameters.binary_name
+
+stages:
+  update-registry:
+    jobs:
+      - job_name: update-registry
+        steps:
+          - image: registry.gitlab.com/gitlab-ci-utils/curl-jq:latest
+            executor: update-registry-parameters
+            run: |
+              if [ -z "$MANIFEST_FILE" ] || [ "$MANIFEST_FILE" == "null" ]; then
+                echo "Error: manifest_file parameter is required"
+                exit 1
+              fi
+
+              if [ ! -f "$MANIFEST_FILE" ]; then
+                echo "Error: manifest file not found: $MANIFEST_FILE"
+                exit 1
+              fi
+
+              echo "Updating registry with manifest: $MANIFEST_FILE, update_latest: $UPDATE_LATEST, update_channel: $UPDATE_CHANNEL"
+
+              # Create artifact object
+              ARTIFACT=$(jq -n \
+                --arg os "linux" \
+                --arg arch "amd64" \
+                --arg url "$ASSET_URL" \
+                --arg sha256 "$SHA256" \
+                --arg binary_name "$BINARY_NAME" \
+                '{os: $os, arch: $arch, url: $url, sha256: $sha256, fileName: $binary_name}')
+
+              # Check if the version already exists in the manifest
+              if jq -e --arg version "$VERSION" '.versions[$version]' "$MANIFEST_FILE" >/dev/null 2>&1; then
+                echo "Version $VERSION already exists in the manifest, updating artifact..."
+                jq --arg version "$VERSION" --argjson artifact "$ARTIFACT" \
+                  '.versions[$version].artifacts |= ([$artifact] + [.[] | select(.os != "linux" or .arch != "amd64")])' \
+                  "$MANIFEST_FILE" > tmp_manifest.json && mv tmp_manifest.json "$MANIFEST_FILE"
+              else
+                echo "Version $VERSION does not exist in the manifest, creating new version..."
+                jq --arg version "$VERSION" --argjson artifact "$ARTIFACT" \
+                  '.versions[$version] = {artifacts: [$artifact]}' \
+                  "$MANIFEST_FILE" > tmp_manifest.json && mv tmp_manifest.json "$MANIFEST_FILE"
+              fi
+
+              if [ "$UPDATE_LATEST" == "true" ]; then
+                echo "Updating latest version to $VERSION"
+                jq --arg version "$VERSION" '.latest = $version' "$MANIFEST_FILE" > tmp_manifest.json && mv tmp_manifest.json "$MANIFEST_FILE"
+              fi
+
+              if [ -n "$UPDATE_CHANNEL" ] && [ "$UPDATE_CHANNEL" != "null" ]; then
+                echo "Updating channel $UPDATE_CHANNEL to version $VERSION"
+                jq --arg version "$VERSION" --arg channel "$UPDATE_CHANNEL" \
+                  '.channels[$channel] = $version' "$MANIFEST_FILE" > tmp_manifest.json && mv tmp_manifest.json "$MANIFEST_FILE"
+              fi
+          - executor:
+              - gh
+              - update-registry-parameters
+            env:
+              GH_TOKEN: hd-lookup:github_write_pat
+            run: |
+              if git diff --quiet "$MANIFEST_FILE"; then
+                echo "No changes to commit"
+                exit 0
+              fi
+
+              git config --global user.name "HoneyDipper CI"
+              git config --global user.email "honeydipper-ci@example.com"
+              git add "$MANIFEST_FILE"
+              git commit -m "Update manifest $MANIFEST_FILE for version $VERSION" -a
+              git push origin HEAD:main
