@@ -8,30 +8,26 @@ settings:
 triggers:
   - conditions:
       relay_track: update-registry
-      sender:
+      relay_sender:
         - Charles546/hd-driver-podman
         - Charles546/hd-driver-auth-github
     stages:
       - update-registry
 
-executors:
-  update-registry-parameters:
-    env:
-      MANIFEST_FILE: $parameters.manifest_file
-      UPDATE_LATEST: '{{ .parameters.update_latest }}'
-      UPDATE_CHANNEL: $parameters.update_channel
-      VERSION: $parameters.version
-      SHA256: $parameters.sha256
-      ASSET_URL: $parameters.asset_url
-      BINARY_NAME: $parameters.binary_name
-
 stages:
   update-registry:
     jobs:
       - job_name: update-registry
+        env:
+          MANIFEST_FILE: $relayed_data.manifest_file
+          UPDATE_LATEST: '{{ .relayed_data.update_latest }}'
+          UPDATE_CHANNEL: $relayed_data.update_channel
+          VERSION: $relayed_data.version
+          SHA256: $relayed_data.sha256
+          ASSET_URL: $relayed_data.asset_url
+          BINARY_NAME: $relayed_data.binary_name
         steps:
           - image: registry.gitlab.com/gitlab-ci-utils/curl-jq:latest
-            executor: update-registry-parameters
             run: |
               if [ -z "$MANIFEST_FILE" ] || [ "$MANIFEST_FILE" == "null" ]; then
                 echo "Error: manifest_file parameter is required"
@@ -77,9 +73,7 @@ stages:
                 jq --arg version "$VERSION" --arg channel "$UPDATE_CHANNEL" \
                   '.channels[$channel] = $version' "$MANIFEST_FILE" > tmp_manifest.json && mv tmp_manifest.json "$MANIFEST_FILE"
               fi
-          - executor:
-              - gh
-              - update-registry-parameters
+          - executor: gh
             env:
               GH_TOKEN: hd-lookup:github_write_pat
             run: |
