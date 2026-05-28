@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "drivers": [
     "podman",
-    "auth-github"
+    "auth-github",
+    "openai"
   ]
 }

@@ -11,6 +11,7 @@ triggers:
       relay_sender:
         - Charles546/hd-driver-podman
         - Charles546/hd-driver-auth-github
+        - Charles546/hd-driver-openai
     stages:
       - update-registry
 
@@ -19,6 +20,7 @@ stages:
     jobs:
       - job_name: update-registry
         env:
+          DRIVER_NAME: $relayed_data.driver_name,""
           MANIFEST_FILE: $relayed_data.manifest_file
           UPDATE_LATEST: '{{ .relayed_data.update_latest }}'
           UPDATE_CHANNEL: $relayed_data.update_channel
@@ -29,14 +31,23 @@ stages:
         steps:
           - image: registry.gitlab.com/gitlab-ci-utils/curl-jq:latest
             run: |
+              set -x
               if [ -z "$MANIFEST_FILE" ] || [ "$MANIFEST_FILE" == "null" ]; then
                 echo "Error: manifest_file parameter is required"
                 exit 1
               fi
 
               if [ ! -f "$MANIFEST_FILE" ]; then
-                echo "Error: manifest file not found: $MANIFEST_FILE"
-                exit 1
+                if [ -z "$DRIVER_NAME" ]; then
+                  DRIVER_NAME=$(basename "$MANIFEST_FILE" | sed 's/\.json$//')
+                fi
+                cat <<EOF > "$MANIFEST_FILE"
+              {
+                "driver": "$DRIVER_NAME",
+                "channels": {},
+                "versions": {}
+              }
+              EOF
               fi
 
               echo "Updating registry with manifest: $MANIFEST_FILE, update_latest: $UPDATE_LATEST, update_channel: $UPDATE_CHANNEL"
