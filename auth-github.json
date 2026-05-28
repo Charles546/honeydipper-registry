@@ -1,8 +1,8 @@
 {
   "driver": "auth-github",
-  "latest": "v0.3.0",
+  "latest": "v0.3.2",
   "channels": {
-    "stable": "v0.3.0"
+    "stable": "v0.3.2"
   },
   "versions": {
     "v0.1.0": {
@@ -44,6 +44,17 @@
           "mirrors": [
             "https://charles546.github.io/honeydipper-registry/artifacts/hd-driver-auth-github/v0.3.0/linux-amd64/hd-driver-auth-github"
           ]
+        }
+      ]
+    },
+    "v0.3.2": {
+      "artifacts": [
+        {
+          "os": "linux",
+          "arch": "amd64",
+          "url": "https://github.com/Charles546/hd-driver-auth-github/releases/download/v0.3.2/hd-driver-auth-github-linux-amd64",
+          "sha256": "df53858c62a187e877eb2360a54fd210425e928dd0716e70c684e6a2a6b13094",
+          "fileName": "hd-driver-auth-github-linux-amd64"
         }
       ]
     }
