@@ -1,8 +1,8 @@
 {
   "driver": "podman",
-  "latest": "v0.5.5",
+  "latest": "v0.6.0",
   "channels": {
-    "stable": "v0.5.5"
+    "stable": "v0.6.0"
   },
   "versions": {
     "v0.1.0": {
@@ -76,6 +76,17 @@
           "arch": "amd64",
           "url": "https://github.com/Charles546/hd-driver-podman/releases/download/v0.5.5/hd-driver-podman-linux-amd64",
           "sha256": "17f9b7ab067ca0491dbfd392745efb9fea729c79848bab1a7ce6912bfcd8aabf",
+          "fileName": "hd-driver-podman-linux-amd64"
+        }
+      ]
+    },
+    "v0.6.0": {
+      "artifacts": [
+        {
+          "os": "linux",
+          "arch": "amd64",
+          "url": "https://github.com/Charles546/hd-driver-podman/releases/download/v0.6.0/hd-driver-podman-linux-amd64",
+          "sha256": "19de04e4e403106f1388352cb2090417441f1aa60cacb43f6f05be9ed8edea0b",
           "fileName": "hd-driver-podman-linux-amd64"
         }
       ]
