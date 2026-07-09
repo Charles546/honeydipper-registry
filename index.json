@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
   "drivers": [
-    "podman",
     "auth-github",
-    "openai"
+    "openai",
+    "podman",
+    "slacksocket"
   ]
 }
