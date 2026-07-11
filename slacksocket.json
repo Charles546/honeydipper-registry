@@ -1,5 +1,20 @@
 {
   "driver": "slacksocket",
-  "channels": {},
-  "versions": {}
+  "channels": {
+    "stable": "v1.0.0"
+  },
+  "versions": {
+    "v1.0.0": {
+      "artifacts": [
+        {
+          "os": "linux",
+          "arch": "amd64",
+          "url": "https://github.com/Charles546/hd-driver-slacksocket/releases/download/v1.0.0/hd-driver-slacksocket-linux-amd64",
+          "sha256": "0f3cd2a5e2519b800438973debd2a3f8ce1bfab0873e9f4d24f2325f4d65df50",
+          "fileName": "hd-driver-slacksocket-linux-amd64"
+        }
+      ]
+    }
+  },
+  "latest": "v1.0.0"
 }
