@@ -12,6 +12,7 @@ triggers:
         - Charles546/hd-driver-podman
         - Charles546/hd-driver-auth-github
         - Charles546/hd-driver-openai
+        - Charles546/hd-driver-slacksocket
     stages:
       - update-registry
 
