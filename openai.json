@@ -1,7 +1,7 @@
 {
   "driver": "openai",
   "channels": {
-    "stable": "v1.5.0"
+    "stable": "v1.6.0"
   },
   "versions": {
     "v1.0.0": {
@@ -146,7 +146,18 @@
           "fileName": "hd-driver-openai-linux-amd64"
         }
       ]
+    },
+    "v1.6.0": {
+      "artifacts": [
+        {
+          "os": "linux",
+          "arch": "amd64",
+          "url": "https://github.com/Charles546/hd-driver-openai/releases/download/v1.6.0/hd-driver-openai-linux-amd64",
+          "sha256": "5eb60cfc9f52aa28c559ca00e1404072711e1b9a08db629edd57a844065a7bf5",
+          "fileName": "hd-driver-openai-linux-amd64"
+        }
+      ]
     }
   },
-  "latest": "v1.5.0"
+  "latest": "v1.6.0"
 }
