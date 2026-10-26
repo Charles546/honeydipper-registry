@@ -13,6 +13,7 @@ triggers:
         - Charles546/hd-driver-auth-github
         - Charles546/hd-driver-openai
         - Charles546/hd-driver-slacksocket
+        - Charles546/hd-driver-docker
     stages:
       - update-registry
 
@@ -85,17 +86,26 @@ stages:
                 jq --arg version "$VERSION" --arg channel "$UPDATE_CHANNEL" \
                   '.channels[$channel] = $version' "$MANIFEST_FILE" > tmp_manifest.json && mv tmp_manifest.json "$MANIFEST_FILE"
               fi
+
+              # Idempotently self-register the driver in the index so first-time
+              # drivers are added to index.json on their first release.
+              if [ -z "$DRIVER_NAME" ]; then
+                DRIVER_NAME=$(basename "$MANIFEST_FILE" | sed 's/\.json$//')
+              fi
+              jq --arg d "$DRIVER_NAME" \
+                'if (.drivers | index($d)) == null then .drivers |= ((. + [$d]) | sort) else . end' \
+                index.json > tmp_index.json && mv tmp_index.json index.json
           - executor: gh
             env:
               GH_TOKEN: hd-lookup:github_write_pat
             run: |
-              if git diff --quiet "$MANIFEST_FILE"; then
+              if git diff --quiet -- "$MANIFEST_FILE" index.json; then
                 echo "No changes to commit"
                 exit 0
               fi
 
               git config --global user.name "HoneyDipper CI"
               git config --global user.email "honeydipper-ci@example.com"
-              git add "$MANIFEST_FILE"
+              git add "$MANIFEST_FILE" index.json
               git commit -m "Update manifest $MANIFEST_FILE for version $VERSION" -a
               git push origin HEAD:main
