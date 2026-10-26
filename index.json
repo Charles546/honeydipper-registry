@@ -2,7 +2,6 @@
   "schemaVersion": 1,
   "drivers": [
     "auth-github",
-    "docker",
     "openai",
     "podman",
     "slacksocket"
